@@ -5,20 +5,34 @@
  *  1. Crie uma planilha nova no Google Sheets.
  *  2. Menu Extensões > Apps Script. Apague o conteúdo e cole este arquivo (Code.gs).
  *  3. Clique em "+" ao lado de Arquivos > HTML e crie um arquivo chamado Index.
- *     Cole nele o conteúdo do arquivo Index.html.
+ *     Cole nele o conteúdo do arquivo index.html.
  *  4. Clique em Implantar > Nova implantação > tipo "Aplicativo da Web".
  *     - Executar como: Eu
  *     - Quem pode acessar: Qualquer pessoa
  *  5. Copie o link gerado e envie no grupo.
+ *  6. (GitHub Pages) Cole o mesmo link na variável API do index.html.
  */
 
 var NOME_ABA = 'Horarios';
 var SEMENTE = { '05:30': ['Borges'] };
 
-function doGet() {
+function doGet(e) {
+  // ?api=1 devolve os horários em JSON para a página do GitHub Pages
+  if (e && e.parameter && e.parameter.api) return _json(getSlots());
   return HtmlService.createHtmlOutputFromFile('Index')
     .setTitle('Lista de Oração 24h · 17/10/2026')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+/** Recebe { acao: "adicionar" | "remover", hora, nome } da página do GitHub Pages. */
+function doPost(e) {
+  var d = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+  var r = d.acao === 'remover' ? removeName(d.hora, d.nome) : addName(d.hora, d.nome);
+  return _json(r);
+}
+
+function _json(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }
 
 function _aba() {
@@ -29,7 +43,7 @@ function _aba() {
     aba.appendRow(['hora', 'nomes']);
     aba.getRange('A:A').setNumberFormat('@');
     Object.keys(SEMENTE).forEach(function (h) {
-      aba.appendRow([h, SEMENTE[h].join(';')]);
+      aba.appendRow(["'" + h, SEMENTE[h].join(';')]);
     });
   }
   return aba;
@@ -40,11 +54,17 @@ function getSlots() {
   var valores = _aba().getDataRange().getValues();
   var resultado = {};
   for (var i = 1; i < valores.length; i++) {
-    var hora = String(valores[i][0]);
+    var hora = _hora(valores[i][0]);
     var nomes = String(valores[i][1] || '');
     resultado[hora] = nomes ? nomes.split(';').filter(function (n) { return n; }) : [];
   }
   return resultado;
+}
+
+/** A planilha pode transformar "05:30" em horário (Date); volta sempre para "HH:MM". */
+function _hora(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(), 'HH:mm');
+  return String(v);
 }
 
 function _limpar(texto) {
@@ -54,7 +74,7 @@ function _limpar(texto) {
 function _linhaDaHora(aba, hora) {
   var valores = aba.getDataRange().getValues();
   for (var i = 1; i < valores.length; i++) {
-    if (String(valores[i][0]) === hora) return i + 1;
+    if (_hora(valores[i][0]) === hora) return i + 1;
   }
   return -1;
 }
@@ -75,7 +95,7 @@ function addName(hora, nome) {
     if (linha > 0) {
       aba.getRange(linha, 2).setValue(atuais.join(';'));
     } else {
-      aba.appendRow([hora, atuais.join(';')]);
+      aba.appendRow(["'" + hora, atuais.join(';')]);
     }
     return { ok: true, slots: getSlots() };
   } finally {
