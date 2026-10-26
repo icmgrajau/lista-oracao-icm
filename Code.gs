@@ -1,5 +1,5 @@
 /**
- * Lista de Oração 24h · ICM Grajaú · 17/10/2026
+ * Lista de Oração 24h · ICM Grajaú · 26/10 a 31/10/2026
  *
  * Como publicar (uma vez só):
  *  1. Crie uma planilha nova no Google Sheets.
@@ -20,7 +20,7 @@ function doGet(e) {
   // ?api=1 devolve os horários em JSON para a página do GitHub Pages
   if (e && e.parameter && e.parameter.api) return _json(getSlots());
   return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle('Lista de Oração 24h · 17/10/2026')
+    .setTitle('Lista de Oração 24h · 26/10 a 31/10/2026')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
